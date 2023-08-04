@@ -38,6 +38,7 @@ function tna(κ, r)
 end
 
 function var2κ(v, n = 2)
+    @assert v < 1 "a Von Mises distribution is not defined for variances ≥ 1"
     r = 1 - v
     κ = r*(2 - r^2)/(1 - r^2)
     for i in 1:n
@@ -46,14 +47,20 @@ function var2κ(v, n = 2)
     return κ
 end
 
+std2κ(σ, n = 2) = var2κ(σ^2/2, n)
+
 mean_resultant_length(θs) = sqrt(mean(cos.(θs))^2 + mean(sin.(θs))^2)
 
-function mean_resultant_length(nrepetitions, nsteps, brw::VonMises, crw::VonMises, w::Float64)
+function mean_resultant_length(nrepetitions, nsteps, brw::VonMises, crw::VonMises, w)
+    # azimuths = Vector{Float64}(undef, nrepetitions)
+    # Threads.@threads for i in 1:nrepetitions
+    #     azimuths[i] = get_exit_azimuth(nsteps, brw, crw, w)
+    # end
     azimuths = [get_exit_azimuth(nsteps, brw, crw, w) for j in 1:nrepetitions]
     mean_resultant_length(azimuths)
 end
 
-mean_resultant_length(nrepetitions, nsteps, brw_σ::Truncated, crw_σ::Truncated, w_σ::Truncated) = mean_resultant_length(nrepetitions, nsteps, VonMises(std2κ(rand(brw_σ))), VonMises(std2κ(rand(crw_σ))), rand(w_σ))
+mean_resultant_length(nrepetitions, nsteps, brw_σ::Truncated, crw_σ::Truncated, w_σ::Truncated) = mean_resultant_length(nrepetitions, nsteps, rand(brw_σ), rand(crw_σ), rand(w_σ))
 
 mean_resultant_length(nrepetitions, nsteps, brw_σ::Real, crw_σ::Real, w_σ::Real) = mean_resultant_length(nrepetitions, nsteps, VonMises(std2κ(brw_σ)), VonMises(std2κ(crw_σ)), w_σ)
 
@@ -63,14 +70,5 @@ function Distributions.std(d::VonMises)
     R = mean_resultant_length(d)
     # sqrt(-2log(R))
     sqrt(2*(1 - R))
-end
-
-function std2κ(σ, n = 2)
-    r = 1 - σ^2/2
-    κ = r*(2 - r^2)/(1 - r^2)
-    for i in 1:n
-        κ = tna(κ, r)
-    end
-    return κ
 end
 

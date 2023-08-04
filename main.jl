@@ -9,11 +9,11 @@ include("functions.jl")
 include("runtests.jl")
 
 
-κ = 1
-d = VonMises(κ)
-α = -π:0.001:π
-p = pdf.(d, α)
-lines(α, p)
+# κ = 1
+# d = VonMises(κ)
+# α = -π:0.001:π
+# p = pdf.(d, α)
+# lines(α, p)
 
 
 ###############
@@ -165,7 +165,7 @@ sg = SliderGrid(fig[1, 1:2],
                )
 w = sg.sliders[1].value
 nsteps = sg.sliders[2].value
-ax = Axis(fig[2,1], xlabel="Motor (°)", ylabel="Compass (°)")#, aspect=AxisAspect(1))
+ax = Axis(fig[2,1], xlabel="Compass (°)", ylabel="Motor (°)")#, aspect=AxisAspect(1))
 r = @lift mean_resultant_length.(n_repetitions, $nsteps, brw_σ, crw_σ', $w)
 heatmap!(ax, rad2deg.(brw_σ), rad2deg.(crw_σ), r)
 Colorbar(fig[2,2], label="mean resultant length", limits=(0,1))
@@ -185,15 +185,27 @@ Colorbar(fig[1,2], label="mean resultant length", limits=(0,1))
 
 #########################
 # heatmap from article
+using ProgressMeter
 
 n = 50
 nsteps = 20
-nrepetitions = 1000
+nrepetitions = 100000
 w = range(0, 1, n)
-brw_σ = range(0, deg2rad(41), n + 2)[2:end-1]
-crw_σ = deg2rad(30)
-r = mean_resultant_length.(n_repetitions, nsteps, brw_σ, crw_σ, w')
+brw_σ = range(0, deg2rad(rad2deg(sqrt(2))), n + 2)[2:end-1] # compass error
+crw_σ = deg2rad(30) # motor error
+r = Array{Float64}(undef, n, n)
+p = Progress(n^2)
+Threads.@threads for k in 1:n^2
+    i, j = Tuple(CartesianIndices((n, n))[k])
+    r[i, j] = mean_resultant_length(nrepetitions, nsteps, brw_σ[j], crw_σ, w[i])
+    next!(p)
+end
+# r = mean_resultant_length.(nrepetitions, nsteps, brw_σ', crw_σ, w)
+
 fig = Figure()
 ax = Axis(fig[1,1], xlabel="weight", ylabel="Compass (°)")
 heatmap!(ax, w, rad2deg.(brw_σ), r)
 Colorbar(fig[1,2], label="mean resultant length", limits=(0,1))
+
+
+                                                      # 1            0

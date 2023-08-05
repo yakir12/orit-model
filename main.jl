@@ -187,7 +187,7 @@ Colorbar(fig[1,2], label="mean resultant length", limits=(0,1))
 # heatmap from article
 using ProgressMeter
 
-n = 50
+n = 100
 nsteps = 20
 nrepetitions = 100000
 w = range(0, 1, n)
@@ -201,11 +201,16 @@ Threads.@threads for k in 1:n^2
     next!(p)
 end
 # r = mean_resultant_length.(nrepetitions, nsteps, brw_σ', crw_σ, w)
-
 fig = Figure()
 ax = Axis(fig[1,1], xlabel="weight", ylabel="Compass (°)")
 heatmap!(ax, w, rad2deg.(brw_σ), r)
 Colorbar(fig[1,2], label="mean resultant length", limits=(0,1))
+i = [findfirst(<(0.9), row) for row in eachrow(r)]
+lines!(ax, w, rad2deg.(brw_σ[i]))
+save("figure 4.png", fig)
 
 
-                                                      # 1            0
+fig = Figure()
+ax = Axis(fig[1,1], xlabel="weight", ylabel="Compass (°)")
+contour!(ax, w, rad2deg.(brw_σ), r, levels=0:0.1:1, labels=true)
+save("figure 4 contour lines.png", fig)

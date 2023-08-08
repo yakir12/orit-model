@@ -24,14 +24,13 @@ function get_exit_point(nsteps, brw, crw, w)
     return xy
 end
 
-mean_resultant_length(nrepetitions, nsteps, brw, crw, w) = norm(mean(_ -> get_exit_point(nsteps, brw, crw, w), 1:nrepetitions)) 
-
+mean_resultant_length(nrepetitions, nsteps, brw, crw, w) = norm(Folds.mapreduce(_ -> get_exit_point(nsteps, brw, crw, w), +, 1:nrepetitions)/nrepetitions) 
 
 # figure 4:
 
+nrepetitions = 100000
 nsteps = 20
 crw_κ = 4 # equivalent to an "angular deviation" of 30°
-nrepetitions = 10000
 n = 100
 
 w = range(0, 1, n)

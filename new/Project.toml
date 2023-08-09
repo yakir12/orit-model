@@ -1,7 +1,6 @@
 [deps]
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Contour = "d38c429a-6771-53c6-b99e-75d170b6e991"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Folds = "41a02a25-b8f0-4f67-bc48-60067656b558"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"

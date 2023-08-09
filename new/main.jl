@@ -6,7 +6,7 @@ using Statistics, LinearAlgebra
 using Distributions, StaticArrays
 using GLMakie, Folds
 
-# function:
+# functions:
 function next_step(θ, brwθ, crwθ, w)
     brwyx = sincos(brwθ)
     crwyx = sincos(θ + crwθ)
@@ -26,11 +26,11 @@ end
 
 mean_resultant_length(nrepetitions, nsteps, brw, crw, w) = norm(Folds.mapreduce(_ -> get_exit_point(nsteps, brw, crw, w), +, 1:nrepetitions)/nrepetitions/nsteps) 
 
-fwhm(κ) = rad2deg(2acos(log(cosh(κ))/κ))
+fwhm(κ) = rad2deg(2acos(log(cosh(κ))/κ)) # convert Von Mises concentration κ to full widith at half maximum in degrees
 
 # figure 4:
 
-nrepetitions = 100000
+nrepetitions = 100_000
 nsteps = 20
 crw_κ = 4 # equivalent to an "angular deviation" of 30°
 n = 100
@@ -46,9 +46,33 @@ Colorbar(fig[1,2], label="Mean resultant length", limits=(0,1))
 
 save("figure 4.png", fig)
 
+# better figure 4:
+
+using Contour
+
+c = contours(w, fwhm.(brw_κ), r, [0.8, 0.9, 0.95, 0.99])
 fig = Figure()
-ax = Axis(fig[1,1], xlabel="Weight", ylabel="Compass FWHM", xticks = (0:0.5:1, ["no compass", "0.5", "no motor"]), ytickformat = "{:d}°", limits = (nothing, (nothing, 120)))
-h = contour!(ax, w, fwhm.(brw_κ), r, levels=[0.75, 0.8, 0.9, 0.95, 0.99, 1], labels=true)
+ax = Axis(fig[1,1], xlabel="Weight", ylabel="Compass FWHM", xticks = (0:0.5:1, ["only motor", "0.5", "only compass"]), ytickformat = "{:d}°", limits = ((nothing, 1.1), (nothing, 100)), title="Mean resultant vector length")
+crw_fwhm = fwhm(crw_κ)
+scatter!(ax, 0, 20, color=(:black, 0))
+for cl in levels(c)
+    lvl = level(cl)
+    line = only(Contour.lines(cl))
+    xs, ys = coordinates(line)
+    lines!(ax, xs, ys, color=[lvl], colorrange=(0.75, 0.99))
+    _, i = findmax(xs)
+    x = xs[i]
+    y = ys[i]
+    text!(ax, x, y, text=string(lvl), align=(:left,:center), offset = (5, 0))
+end
+ax2 = Axis(fig[1,1], yticks = ([crw_fwhm], ["motor\nFWHM"]), yaxisposition = :right)
+linkyaxes!(ax, ax2)
+hidespines!(ax2)
+hidexdecorations!(ax2)
+ax3 = Axis(fig[1,1], yticks = ([crw_fwhm], [string(round(Int, crw_fwhm), "°")]))
+linkyaxes!(ax, ax3)
+hidespines!(ax3)
+hidexdecorations!(ax3)
 
 
 save("contour.png", fig)

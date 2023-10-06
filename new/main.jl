@@ -21,7 +21,7 @@ function get_exit_point(nsteps, brw, crw, w)
         θ, Δ = next_step(θ, rand(brw), rand(crw), w)
         xy += Δ
     end
-    return xy
+    return nsteps*normalize(xy) # here I normalize the path length to nsteps, usually a very small adjustment
 end
 
 mean_resultant_length(nrepetitions, nsteps, brw, crw, w) = norm(Folds.mapreduce(_ -> get_exit_point(nsteps, brw, crw, w), +, 1:nrepetitions)/nrepetitions/nsteps) 
@@ -76,3 +76,72 @@ hidexdecorations!(ax3)
 
 
 save("contour.png", fig)
+
+
+##### compare
+
+nrepetitions = 100_000
+nsteps = 20
+crw_κ = 3.4
+n = 100
+
+w = range(0, 1, 2)
+brw_κ = collect(range(0.1, 400, n))
+push!(brw_κ, crw_κ)
+sort!(brw_κ)
+r = Folds.map(κw -> mean_resultant_length(nrepetitions, nsteps, VonMises(κw.κ), VonMises(crw_κ), κw.w), ((; κ, w) for w in w, κ in brw_κ))
+
+fig = Figure()
+ax = Axis(fig[1,1], xscale=log10, ylabel="Mean resultant length", xlabel="Compass error κ")
+for (i, w) in enumerate(w)
+    lines!(ax, brw_κ, r[i,:], label=string("weight = ", w))
+end
+vlines!(ax, crw_κ, color=:grey, label = "CRW κ")
+axislegend(ax, position=:lt)
+
+save("simple.png", fig)
+
+
+
+
+
+
+
+crw_κ = 3.4
+brw_κ = range(0.1, 10^4, n)
+r = Folds.map(κw -> mean_resultant_length(nrepetitions, nsteps, VonMises(κw.κ), VonMises(crw_κ), κw.w), ((; κ, w) for w in w, κ in brw_κ))
+
+using MAT
+
+vars = matread("kappa_sweep_results_CN_230918.mat")
+xh = vec(vars["w_array"][Int.(vars["index2"])])
+yh = vec(vars["BRW_array"][Int.(vars["index1"])])
+
+p = findall(x -> 0.9 < x < 0.92, r)
+x = repeat(w, outer=(1,n))[p]
+y = repeat(brw_κ', outer=(n,1))[p]
+
+fig = Figure()
+ax = Axis(fig[1,1])
+heatmap!(ax, w, log10.(brw_κ), r)
+scatter!(ax, x, log10.(y))
+
+
+
+c = contours(w, brw_κ, r, [0.9, 0.92])
+fig = Figure()
+ax = Axis(fig[1,1], yscale = log10, limits=((0, 1),(10^-1, 10^4)), xlabel="Weight", ylabel="Compass κ")
+scatter!(ax, xh, yh)
+
+for cl in levels(c)
+    lvl = level(cl)
+    line = only(Contour.lines(cl))
+    xs, ys = coordinates(line)
+    lines!(ax, xs, ys, color=[lvl], colorrange=(0.75, 0.99))
+    _, i = findmax(xs)
+    x = xs[i]
+    y = ys[i]
+    text!(ax, x, y, text=string(lvl), align=(:left,:center), offset = (5, 0))
+end
+
+hlines!(ax, crw_κ)

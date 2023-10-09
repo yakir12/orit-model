@@ -21,7 +21,7 @@ function get_exit_point(nsteps, brw, crw, w)
         θ, Δ = next_step(θ, rand(brw), rand(crw), w)
         xy += Δ
     end
-    return nsteps*normalize(xy) # here I normalize the path length to nsteps, usually a very small adjustment
+    return nsteps*normalize(xy) # shorten / extend the last step of the beetle so it crosses the nsteps circle around the origin
 end
 
 mean_resultant_length(nrepetitions, nsteps, brw, crw, w) = norm(Folds.mapreduce(_ -> get_exit_point(nsteps, brw, crw, w), +, 1:nrepetitions)/nrepetitions/nsteps) 
@@ -76,6 +76,61 @@ hidexdecorations!(ax3)
 
 
 save("contour.png", fig)
+
+#### add at nsteps as a factornrepetitions = 100_000
+
+nrepetitions = 100_000
+n = 20
+nstepses = range(5, 50, n)
+crw_κ = 4 # equivalent to an "angular deviation" of 30°
+w = range(0, 1, 11)
+brw_κ = exp.(range(log(0.01), log(400), 5))
+r = Folds.map(κwn -> mean_resultant_length(nrepetitions, κwn.nsteps, VonMises(κwn.κ), VonMises(crw_κ), κwn.w), ((; w, κ, nsteps) for w in w, κ in brw_κ, nsteps in nstepses))
+
+fig = Figure()
+ax = Axis(fig[1,1], xlabel="n steps", ylabel="Mean resultant length", limits = (extrema(nstepses), (0, 1)))
+sgrid = SliderGrid(fig[2, 1],
+                   (label = "Weight", range = 1:length(w), format = x -> string(w[x])),
+)
+wi = sgrid.sliders[].value
+for (i, brw) in enumerate(brw_κ)
+    lines!(ax, nstepses, @lift(vec(r[$wi, i, :])); label = string(round(brw, digits = 2)))
+end
+axislegend("BRW (κ)")
+
+
+
+function track(nsteps, brw, crw, w)
+    xy = [zero(SVector{2, Float64})]
+    θ = 0.0
+    while norm(xy[end]) < nsteps
+        θ, Δ = next_step(θ, rand(brw), rand(crw), w)
+        push!(xy, xy[end] + Δ)
+    end
+    xy[end] = nsteps*normalize(xy[end])
+    return xy
+end
+fig = Figure()
+ax = Axis(fig[1,1], aspect = DataAspect())
+n = 101
+sgrid = SliderGrid(fig[2, 1],
+                   (label = "# steps", range = round.(Int, 10 .^ range(1, 4, n))),
+                   (label = "Compass error (κ)", range = exp.(range(log(0.01), log(400), n))),
+                   (label = "Motor error (κ)", range = exp.(range(log(0.01), log(400), n))),
+                   (label = "Weight", range = range(0, 1, n)),
+)
+nsteps, brw_κ, crw_κ, w = [s.value for s in sgrid.sliders]
+lines!(ax, @lift(Circle(zero(Point2f), $nsteps)), color=:black)
+lines!(ax, @lift track($nsteps, VonMises($brw_κ), VonMises($crw_κ), $w))
+lines!(ax, @lift([zero(Point2f), Point2f($nsteps, 0)]) , color = :green)
+onany(nsteps, brw_κ, crw_κ, w) do x...
+    autolimits!(ax)
+end
+
+
+
+
+
 
 
 ##### compare

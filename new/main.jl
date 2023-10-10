@@ -77,6 +77,35 @@ hidexdecorations!(ax3)
 
 save("contour.png", fig)
 
+#### try to fit distribution instead
+function get_exit_angle(nsteps, brw, crw, w)
+    xy = zero(SVector{2, Float64})
+    θ = 0.0
+    while norm(xy) < nsteps
+        θ, Δ = next_step(θ, rand(brw), rand(crw), w)
+        xy += Δ
+    end
+    x, y = nsteps*normalize(xy)
+    atan(y, x)
+end
+
+# the mean resultant length, R, as a function of variance
+MRL(σ²) = exp(-σ²/2)
+
+function mean_resultant_length(nsteps, brw_κ, crw_κ, w, nrepetitions)
+    α = Folds.map(_ -> get_exit_angle(nsteps, VonMises(brw_κ), VonMises(crw_κ), w), 1:nrepetitions)
+    d = fit(Normal, [α; -α])
+    MRL(var(d))
+end
+
+nrepetitions = 100_000
+nsteps = 20
+crw_κ = 4 # equivalent to an "angular deviation" of 30°
+n = 100
+brw_κ = 1
+w = 0.5
+r = mean_resultant_length(nsteps, brw_κ, crw_κ, w, nrepetitions)
+
 #### add at nsteps as a factornrepetitions = 100_000
 
 nrepetitions = 100_000
@@ -141,22 +170,31 @@ crw_κ = 3.4
 n = 100
 
 w = range(0, 1, 2)
-brw_κ = collect(range(0.1, 400, n))
+brw_κ = exp10.(range(log10(0.1), log10(400), n))
 push!(brw_κ, crw_κ)
 sort!(brw_κ)
 r = Folds.map(κw -> mean_resultant_length(nrepetitions, nsteps, VonMises(κw.κ), VonMises(crw_κ), κw.w), ((; κ, w) for w in w, κ in brw_κ))
 
 fig = Figure()
-ax = Axis(fig[1,1], xscale=log10, ylabel="Mean resultant length", xlabel="Compass error κ")
+ax = Axis(fig[1,1], xscale=log10, ylabel="Mean resultant length", xlabel="Compass error κ", limits=(extrema(brw_κ), (0, 1)))
 for (i, w) in enumerate(w)
-    lines!(ax, brw_κ, r[i,:], label=string("weight = ", w))
+    lines!(ax, brw_κ, r[i,:], label=string("weight = ", Int(w)), linewidth=3)
 end
 vlines!(ax, crw_κ, color=:grey, label = "CRW κ")
-axislegend(ax, position=:lt)
+axislegend(ax, position=:rc)
 
 save("simple.png", fig)
 
 
+w = 0.1
+brw_κ = exp10.(range(log10(0.1), log10(400), n))
+push!(brw_κ, crw_κ)
+sort!(brw_κ)
+r = Folds.map(κ -> mean_resultant_length(nrepetitions, nsteps, VonMises(κ), VonMises(crw_κ), w), (κ for κ in brw_κ))
+
+fig = Figure()
+ax = Axis(fig[1,1], xscale=log10, ylabel="Mean resultant length", xlabel="Compass error κ", limits=(extrema(brw_κ), (0, 1)))
+lines!(ax, brw_κ, r, label=string("weight = ", w), linewidth=3)
 
 
 

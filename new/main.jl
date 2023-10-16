@@ -164,6 +164,32 @@ end
 
 ##### compare
 
+# Here is a sweep with weight = 0.5. I get R = 0.59 at kappa = 0.1, and it saturates to 0.99 at around kappa = 8.
+
+nrepetitions = 100_000
+nsteps = 20
+crw_κ = 3.4
+n = 5
+w = 0.5
+brw_κ = [0.1, 8]
+df = allcombinations(DataFrame; nsteps, crw_κ, w, brw_κ)
+transform!(df, [:nsteps, :crw_κ, :w, :brw_κ] => ByRow((nsteps, crw_κ, w, brw_κ) -> mean_resultant_length(nrepetitions, nsteps, VonMises(brw_κ), VonMises(crw_κ), w)) => :mean_resultant_length)
+
+
+using DataFrames, CSV
+nrepetitions = 1_000_000
+nsteps = 20
+crw_κ = 3.4
+n = 5
+w = range(0, 1, n)
+brw_κ = round.(exp.(range(log(0.01), log(400), n)), digits = 2)
+df = allcombinations(DataFrame; nsteps, crw_κ, w, brw_κ)
+transform!(df, [:nsteps, :crw_κ, :w, :brw_κ] => ByRow((nsteps, crw_κ, w, brw_κ) -> mean_resultant_length(nrepetitions, nsteps, VonMises(brw_κ), VonMises(crw_κ), w)) => :mean_resultant_length)
+
+CSV.write("compare.csv", df)
+
+r = Folds.map(κw -> mean_resultant_length(nrepetitions, nsteps, VonMises(κw.κ), VonMises(crw_κ), κw.w), ((; κ, w) for w in w, κ in brw_κ))
+
 nrepetitions = 100_000
 nsteps = 20
 crw_κ = 3.4

@@ -60,6 +60,27 @@ using GLMakie, Folds, Distributions, Interpolations, KernelDensity, Optim
 # end
 # c/n
 
+n = 20
+nrepetitions = 100_000
+nsteps = 20
+# brw_κs = range(1, 20, n)
+brw_κs = exp10.(range(log10(0.1), log10(100), n))
+brws = VonMises.(brw_κs)
+crw_κ = 4
+crw = VonMises(crw_κ)
+ws = range(0, 1, n)
+p = Folds.collect(mean_resultant_length(nrepetitions, nsteps, brw, crw, w) for w in ws, brw in brws)
+
+wbrw = [(ws[first(Tuple(ind))], brw_κs[last(Tuple(ind))]) for ind in CartesianIndices((n, n)) if 0.9 < p[ind] < 0.95]
+
+fig = Figure()
+ax = Axis(fig[1,1], limits = ((0,1), extrema(brw_κs)), xlabel="Weight", ylabel="Compass error (κ)", yscale=log10)
+contour!(ax, ws, brw_κs, p; levels=[0.9, 0.95, 0.99], labels=true, color=:black)
+scatter!(ax, wbrw)
+
+
+
+
 
 function get_likelihood(nrepetitions::Int, nsteps, brw::Real, crw::Real, w::Real, n::Int, rvalues)
     p = 0.0

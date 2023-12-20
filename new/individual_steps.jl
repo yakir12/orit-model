@@ -42,6 +42,7 @@ w = 0.5
 xys = create_track(nsteps, brw, crw, w)
 
 f = hist(norm.(diff(xys)), bins=100; axis=(;xlabel="Step length", ylabel="Counts", limits=((0,1), nothing)))
+
 save("step_lengths.png", f.figure)
 
 

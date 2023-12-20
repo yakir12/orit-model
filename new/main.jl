@@ -11,7 +11,7 @@ function next_step(θ, brwθ, crwθ, w)
     brwyx = sincos(brwθ)
     crwyx = sincos(θ + crwθ)
     y, x = @. w*brwyx + (1 - w)*crwyx
-    return (atan(y, x), SVector{2, Float64}(x, y))
+    return (atan(y, x), normalize(SVector{2, Float64}(x, y)))
 end
 
 function get_exit_point(nsteps, brw, crw, w)
@@ -166,6 +166,7 @@ end
 
 # Here is a sweep with weight = 0.5. I get R = 0.59 at kappa = 0.1, and it saturates to 0.99 at around kappa = 8.
 
+using DataFrames, CSV
 nrepetitions = 100_000
 nsteps = 20
 crw_κ = 3.4
@@ -176,7 +177,6 @@ df = allcombinations(DataFrame; nsteps, crw_κ, w, brw_κ)
 transform!(df, [:nsteps, :crw_κ, :w, :brw_κ] => ByRow((nsteps, crw_κ, w, brw_κ) -> mean_resultant_length(nrepetitions, nsteps, VonMises(brw_κ), VonMises(crw_κ), w)) => :mean_resultant_length)
 
 
-using DataFrames, CSV
 nrepetitions = 1_000_000
 nsteps = 20
 crw_κ = 3.4
@@ -186,7 +186,7 @@ brw_κ = round.(exp.(range(log(0.01), log(400), n)), digits = 2)
 df = allcombinations(DataFrame; nsteps, crw_κ, w, brw_κ)
 transform!(df, [:nsteps, :crw_κ, :w, :brw_κ] => ByRow((nsteps, crw_κ, w, brw_κ) -> mean_resultant_length(nrepetitions, nsteps, VonMises(brw_κ), VonMises(crw_κ), w)) => :mean_resultant_length)
 
-CSV.write("compare.csv", df)
+CSV.write("compare2.csv", df)
 
 r = Folds.map(κw -> mean_resultant_length(nrepetitions, nsteps, VonMises(κw.κ), VonMises(crw_κ), κw.w), ((; κ, w) for w in w, κ in brw_κ))
 
